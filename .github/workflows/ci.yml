@@ -79,17 +79,19 @@ jobs:
       - run: chmod +x testmd-linux-amd64
       - run: ./testmd-linux-amd64 ci
 
-  # ── Stage 4: Docker (linux/amd64 + linux/arm64) ─────────────────
+  # ── Stage 4: Docker ─────────────────────────────────────────────
   docker:
     needs: [testmd-ci-py, testmd-ci-go]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/download-artifact@v4
+        with:
+          name: testmd-linux-amd64
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          build-args: BINARY=testmd-linux-amd64
           push: false
           tags: testmd:latest
