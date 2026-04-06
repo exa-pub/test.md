@@ -1,0 +1,22 @@
+{
+  "name": "testmd",
+  "owner": {
+    "name": "exa",
+    "email": "exa@exanet.ai"
+  },
+  "metadata": {
+    "description": "Skill for working with testmd — a tool that tracks manual/semi-automated tests in TEST.md files and enforces verification when code changes",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "testmd",
+      "description": "Track manual tests in TEST.md files. Helps agents understand the testmd workflow, use CLI commands correctly, and resolve tests after code changes.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/testmd"
+      ]
+    }
+  ]
+}

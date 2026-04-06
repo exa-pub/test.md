@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="exa-pub/testmd"
+REPO="exa-pub/test.md"
 BINARY_NAME="testmd"
 
 # --- Colors (if terminal supports them) ---
@@ -218,7 +218,7 @@ case ":${PATH}:" in
 esac#!/bin/sh
 set -e
 
-REPO="exa-pub/testmd"
+REPO="exa-pub/test.md"
 BINARY_NAME="testmd"
 
 # --- Colors (if terminal supports them) ---
