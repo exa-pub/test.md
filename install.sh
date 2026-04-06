@@ -97,10 +97,10 @@ determine_install_dir() {
     fi
 
     # Ask the user
-    printf "${BOLD}${YELLOW}==> /usr/local/bin is not writable.${RESET}\n"
-    printf "    [1] Use sudo to install to /usr/local/bin (may prompt for password)\n"
-    printf "    [2] Install to ~/.local/bin (no root required)\n"
-    printf "    Choice [1]: "
+    printf "${BOLD}${YELLOW}==> /usr/local/bin is not writable.${RESET}\n" >&2
+    printf "    [1] Use sudo to install to /usr/local/bin (may prompt for password)\n" >&2
+    printf "    [2] Install to ~/.local/bin (no root required)\n" >&2
+    printf "    Choice [1]: " >&2
     read -r choice </dev/tty
     case "$choice" in
       2)
