@@ -19,5 +19,8 @@ testmd = "testmd.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/testmd"]
 
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

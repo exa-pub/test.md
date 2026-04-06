@@ -1,6 +1,8 @@
-# testmd
+# TEST.md
 
 Executable contracts for your codebase: "if you changed X, verify Y".
+
+Agents don't know your project's unwritten rules. testmd makes them written — and enforced.
 
 ## What it does
 
