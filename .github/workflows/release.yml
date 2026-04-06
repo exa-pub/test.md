@@ -32,14 +32,17 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Build
+      - name: Build and package
         run: |
           CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
             go build -ldflags="-s -w" -o testmd-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/testmd/
+          tar -czf testmd-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz testmd-${{ matrix.goos }}-${{ matrix.goarch }}
       - uses: actions/upload-artifact@v4
         with:
           name: testmd-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: testmd-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            testmd-${{ matrix.goos }}-${{ matrix.goarch }}
+            testmd-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   # ── GitHub Release with binaries ────────────────────────────────
   release:
@@ -50,6 +53,9 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - name: Generate checksums
+        working-directory: artifacts
+        run: sha256sum testmd-*.tar.gz > checksums.txt
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
