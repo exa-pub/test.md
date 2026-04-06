@@ -79,3 +79,207 @@ After making code changes:
 4. Resolve or fail each test
 
 This is especially important before committing or opening a PR — `testmd ci` will block merges if tests are unresolved.
+
+## TEST.md file structure
+
+A TEST.md file has three optional sections, in order:
+
+1. **Frontmatter** — YAML between `---` delimiters at the very beginning
+2. **Test definitions** — sections starting with `# Title`
+3. **State block** — auto-managed by testmd, at the end of the file (do not edit manually)
+
+### Frontmatter
+
+Optional YAML block at the top of the file:
+
+````markdown
+---
+include: [tests/integration/TEST.md, tests/e2e/TEST.md]
+ignorefile: .testmdignore
+---
+````
+
+| Field | Default | Description |
+|---|---|---|
+| `include` | `[]` | Paths to other TEST.md files (relative to current). Tests are merged; each file stores its own state. |
+| `ignorefile` | `.gitignore` | Gitignore-format file. Matching entries are excluded from label discovery and file hashing. |
+
+### Test definition
+
+Each test is an h1 heading + a YAML config block + a free-form description:
+
+````markdown
+# API returns valid JSON
+
+```yaml
+on_change: ./src/api/**
+```
+
+Send GET /users and verify response is valid JSON with correct schema.
+````
+
+Config fields:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `on_change` | string or list | **yes** | Glob pattern(s) for watched files |
+| `id` | string | no | Explicit stable id (so renaming the title doesn't change the id) |
+| `matrix` | list | no | Label combinations (see below) |
+
+### Patterns in `on_change`
+
+```yaml
+on_change: ./src/auth/**          # recursive glob
+on_change: ./config/*.yaml        # single-level wildcard
+on_change:                        # multiple patterns
+  - ./src/api/**
+  - ./schema/openapi.yaml
+on_change: ./services/$name/**    # label variable — auto-discovers from filesystem
+```
+
+Special segments:
+- `$identifier` — label variable, each unique directory at that position produces a test instance
+- `*` — matches any name at one path level
+- `**` — matches any sub-path, zero or more levels
+
+### Labels: auto-discovery from filesystem
+
+When a pattern contains `$var` and no `matrix` is specified, testmd discovers values from the filesystem:
+
+````markdown
+# $service healthcheck
+
+```yaml
+on_change: ./services/$service/**
+```
+
+Verify `$service` responds to GET /health with 200.
+````
+
+With filesystem `services/{auth,billing,gateway}/`, this creates three test instances:
+```
+$ testmd status
+$service healthcheck
+  … ed4be2-fe0c31  service=auth     pending
+  … ed4be2-c9054d  service=billing  pending
+  … ed4be2-ab1234  service=gateway  pending
+```
+
+Adding a new directory (e.g. `services/payments/`) automatically creates a new pending test.
+
+### Labels: explicit matrix
+
+Matrix decouples label generation from file structure. Useful for fixed combinations (environments, versions) or mixing auto-discovery with explicit values.
+
+**Const — explicit values (cartesian product):**
+
+````markdown
+# API compatibility
+
+```yaml
+on_change: ./api/**
+matrix:
+  - const:
+      version: [v1, v2, v3]
+```
+
+Verify the API contract for version `$version`.
+````
+
+**Match — discover from filesystem:**
+
+```yaml
+matrix:
+  - match:
+      - ./services/$name/
+```
+
+**Match + const — cartesian product of discovered and explicit:**
+
+````markdown
+# Deploy smoke test
+
+```yaml
+on_change:
+  - ./services/$service/**
+  - ./deploy/$env.yaml
+matrix:
+  - match:
+      - ./services/$service/
+    const:
+      env: [prod, staging]
+```
+
+After deploying `$service` to `$env`:
+1. Verify the service starts
+2. Check /health returns 200
+````
+
+**Multiple entries — union (not cartesian):**
+
+```yaml
+matrix:
+  - const: {db: [postgres, mysql]}
+  - const: {db: [sqlite]}
+# produces: db=postgres, db=mysql, db=sqlite
+```
+
+### Includes: splitting tests across files
+
+````markdown
+---
+include: [tests/integration/TEST.md, tests/e2e/TEST.md]
+---
+
+# Unit test sanity
+
+```yaml
+on_change: ./src/**
+```
+
+Run `make test` and verify all unit tests pass.
+````
+
+`testmd status` shows tests from all included files. Each file stores its own state independently. Nested includes (an included file including another) are not supported.
+
+### Full example
+
+A complete TEST.md showing multiple features together:
+
+````markdown
+---
+include: [src/testmd/TEST.md]
+ignorefile: .gitignore
+---
+
+# Go implementation matches Python
+
+```yaml
+on_change:
+  - ./internal/**
+  - ./cmd/**
+```
+
+Go code changed — verify it still matches the Python reference:
+1. Run both implementations on the same TEST.md
+2. Compare report JSON output
+3. Go tests pass: `go test ./internal/...`
+
+# Deploy smoke test for $service
+
+```yaml
+on_change:
+  - ./services/$service/**
+  - ./deploy/$env.yaml
+matrix:
+  - match:
+      - ./services/$service/
+    const:
+      env: [prod, staging]
+```
+
+After deploying `$service` to `$env`:
+1. Verify the service starts
+2. Check /health returns 200
+3. Run basic smoke test
+````
