@@ -224,7 +224,7 @@ test:manual:
 # OAuth flow
 
 ```yaml
-id: oauth
+id: oauth 
 on_change: ./services/auth/**
 ```
 
