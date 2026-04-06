@@ -153,10 +153,15 @@ run_cmd() {
 if [ -n "$TESTMD_VERSION" ]; then
   VERSION="$TESTMD_VERSION"
 else
-  VERSION=$(download "https://api.github.com/repos/${REPO}/releases/latest" "" \
-    | grep '"tag_name"' | cut -d'"' -f4) || true
-  if [ -z "$VERSION" ]; then
-    error "Failed to fetch latest version. Set TESTMD_VERSION to install a specific version."
+  # Use redirect from /releases/latest to extract the tag — no API auth needed
+  LATEST_URL="https://github.com/${REPO}/releases/latest"
+  if [ "$DOWNLOADER" = "curl" ]; then
+    VERSION=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$LATEST_URL" | grep -o '[^/]*$') || true
+  else
+    VERSION=$(wget --max-redirect=0 -q -O /dev/null "$LATEST_URL" 2>&1 | grep -i 'Location' | grep -o '[^/]*$') || true
+  fi
+  if [ -z "$VERSION" ] || [ "$VERSION" = "latest" ]; then
+    error "Failed to fetch latest version. Set TESTMD_VERSION=v1.0.0 to install a specific version."
   fi
 fi
 
