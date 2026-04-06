@@ -81,18 +81,18 @@ Read through each doc and verify:
       "title": "Python implementation matches Go"
     },
     "7a4284-e3b0c4": {
-      "content_hash": "e7a1c5d306851f00952c93e3a21e20ac11b0512d6608d1602aa7f57eb7316eb5",
+      "content_hash": "c8762db815040c3004f1c36ab5fdb07c46b30e268a75a00afd222e3fb504ef61",
       "failed_at": null,
       "files": {
-        "README.md": "200102d6092dcecaea1d2912080e7b5eca2d61562fe9784574d76232267182da",
+        "README.md": "15830eb1fb39190305f8b054f159aa7c078fef993674a6857f042e91faacb213",
         "docs/architecture.md": "bf31e22d52e6314d4e4ed026d387cf76e01eb45bf8d82e932b0e22dc89a920c4",
         "docs/cli.md": "58906b73f4d2f62296c59c2cc80fdd4d38a1184fd41c0d0265107f63d6342a85",
-        "docs/examples.md": "c385819d26fee494ab5ea5b3914aff79ffe870738299f1d5e9ac6f3722f35d09",
+        "docs/examples.md": "67fbdbfbfca1a6571822cfb51783aa892c063e80ccbde3813a409dfc37a3275b",
         "docs/specification.md": "8ca6de64ca06c9a79e745c697ea2c869a221c08129c1cf2079010dca69938701"
       },
       "labels": {},
       "message": null,
-      "resolved_at": "2026-04-06T22:42:29.035149+00:00",
+      "resolved_at": "2026-04-06T23:19:57.603466+00:00",
       "status": "resolved",
       "title": "Documentation is accurate"
     },
