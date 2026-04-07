@@ -48,7 +48,7 @@ State is stored separately in `.testmd.lock` (see [State file](#state-file)).
 
 Each test starts with a level-1 heading (`# Title`) followed by a YAML config block and a description:
 
-```markdown
+````markdown
 # OAuth login flow on {env}
 
 ```yaml
@@ -65,7 +65,7 @@ Verify that OAuth works for each provider:
 1. Navigate to /login
 2. Click "Sign in with {provider}"
 3. Verify redirect and session creation
-```
+````
 
 ### Test config fields
 

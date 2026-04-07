@@ -15,14 +15,14 @@ tests:
     title: Agent skill is up to date
     source: TEST.md
     status: resolved
-    content_hash: 729d0da5d9b0a1c85086dbeb52f0c4ee68de3e75203d21257a558bda597b2840
-    resolved_at: "2026-04-07T18:59:18Z"
+    content_hash: 3c2f4bdce1fd86be42308ff55b59d0ad01f7a8dbcbc892a146596a09392c86cf
+    resolved_at: "2026-04-07T19:10:53Z"
     failed_at: null
     message: null
     labels: {}
     files:
       docs/cli.md: 6c7e676bbc185d8d948ae5d01ef9312b0209d3d86e367bff8f780ea585d1f5eb
-      docs/specification.md: af278d2550b7d9fdd51ae615b9b2b1f13abd5a0272b6cce6cb79bc16c5580711
+      docs/specification.md: 33bdbc6a0d6bf1243556097be1c6f717fca81de8f8417e4f443cd8fd7433543f
       internal/cli/cli.go: c27b7bfadb2a762c15f9b104b6ba24b9df4615b468bc9b8df007b18f439277c4
       skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
   5c7541e3b0c45ab752:
@@ -55,8 +55,8 @@ tests:
     title: Documentation is accurate
     source: TEST.md
     status: resolved
-    content_hash: 4c1fd26009e89bd3730d947a988c2d11669eebb0c63490754dab80fe97e1eb35
-    resolved_at: "2026-04-07T18:59:18Z"
+    content_hash: 68885b20662891cdaa63d5e96712bac8f8bdad48280d39adf333b5fe27cb3f1f
+    resolved_at: "2026-04-07T19:10:53Z"
     failed_at: null
     message: null
     labels: {}
@@ -64,8 +64,25 @@ tests:
       README.md: f6574e0d2361e880220bfa51026259cb9c10b1564a966597d112a7d8630fe168
       docs/architecture.md: ab55a010efe6699a7ff81c3d6c7c7c44024a4e8f4e2df76f970e7c62981bbd95
       docs/cli.md: 6c7e676bbc185d8d948ae5d01ef9312b0209d3d86e367bff8f780ea585d1f5eb
-      docs/examples.md: 5a0d8933eac7d52f4e7a61ceb638cd851cf702bf325166d85bebd4765832d62b
-      docs/specification.md: af278d2550b7d9fdd51ae615b9b2b1f13abd5a0272b6cce6cb79bc16c5580711
+      docs/examples.md: 0c6ebbbc37ea15ea5b5c7d684987f774c223ca9ae1e0bfcbad7b3ee923dd3f74
+      docs/specification.md: 33bdbc6a0d6bf1243556097be1c6f717fca81de8f8417e4f443cd8fd7433543f
+  9ecd59e3b0c45ab752:
+    title: Markdown code blocks are balanced
+    source: TEST.md
+    status: resolved
+    content_hash: 9d389e101d02e9d02cef3b8f4591200d271014c41243bf0fdfef0151449683fb
+    resolved_at: "2026-04-07T19:10:53Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      README.md: f6574e0d2361e880220bfa51026259cb9c10b1564a966597d112a7d8630fe168
+      docs/architecture.md: ab55a010efe6699a7ff81c3d6c7c7c44024a4e8f4e2df76f970e7c62981bbd95
+      docs/cli.md: 6c7e676bbc185d8d948ae5d01ef9312b0209d3d86e367bff8f780ea585d1f5eb
+      docs/examples.md: 0c6ebbbc37ea15ea5b5c7d684987f774c223ca9ae1e0bfcbad7b3ee923dd3f74
+      docs/screenshot-terminal.png: 9d29b81b3031ec0dc681d6279aff0871dd3a8c8a9aeff45e1c3c3343c92e79a2
+      docs/specification.md: 33bdbc6a0d6bf1243556097be1c6f717fca81de8f8417e4f443cd8fd7433543f
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
   a46e4ee3b0c4019ed1:
     title: Skill teaches ci fix workflow
     source: skills/TEST.md
@@ -103,8 +120,8 @@ tests:
     title: Skill includes detailed documentation in references
     source: skills/TEST.md
     status: resolved
-    content_hash: 01df20511127174f90a2a519c92e7c1bf63435710a3c313e766f03c77e391ba8
-    resolved_at: "2026-04-07T18:59:18Z"
+    content_hash: 283697afe8420c15497e48463c6190eb7abdc8081040b363d7b2e429cd6dd026
+    resolved_at: "2026-04-07T19:10:53Z"
     failed_at: null
     message: null
     labels: {}
@@ -112,8 +129,8 @@ tests:
       skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
       skills/testmd/references/architecture.md: f2883d29d3fca3c08484fc72729a46098058b592fc49e27fb7080fc61ad475b9
       skills/testmd/references/cli.md: 5fd9380bb89d33334afefe0413699dab04f344668c2c7456a5bdb2aaff311d38
-      skills/testmd/references/examples.md: 51f598daebc3183f99161db7677dcbe4bb85184ff16f70d2245a02789a1ad1b2
-      skills/testmd/references/specification.md: 50c0057cab56738dda3f26e6be02a894ce587e8177a89a70f718e3482be568ba
+      skills/testmd/references/examples.md: 39894b7b3713a30b17a392ed49e3fbd51ef5516fd5fe3068880ebc1d72eaa647
+      skills/testmd/references/specification.md: aaf76004b0b91b0e9df051da4bffe597dd131cd7accb76234bc2354a6521e4cb
   d64569e3b0c4019ed1:
     title: Skill describes installation correctly
     source: skills/TEST.md

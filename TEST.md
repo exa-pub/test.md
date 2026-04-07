@@ -28,6 +28,23 @@ Read through each doc and verify:
 3. No references to removed features or old behavior
 4. Architecture doc matches actual module structure
 
+# Markdown code blocks are balanced
+
+```yaml
+watch:
+  - ./docs/**
+  - ./README.md
+  - ./skills/testmd/SKILL.md
+```
+
+Markdown fences must be balanced: an opening fence (N backticks) is closed only by a line starting with exactly N backticks. Inner fences with fewer backticks are content, not structure.
+
+Verify for each watched `.md` file:
+1. Parse top-to-bottom: track a stack of open fences by backtick count
+2. A line with N backticks either closes the current block (if N == top of stack) or is content (if N < top of stack) or opens a new block (if no block is open, or N > top of stack)
+3. At end of file, the stack must be empty — no unclosed blocks
+4. Outer fences wrapping examples (e.g. in README, SKILL.md) must use strictly more backticks (`````) than inner fences (```) — never the same count
+
 # Agent skill is up to date
 
 ```yaml

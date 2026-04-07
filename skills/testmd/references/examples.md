@@ -2,7 +2,7 @@
 
 ## Simple: single file, no labels
 
-```markdown
+````markdown
 # Login page renders
 
 ```yaml
@@ -12,7 +12,7 @@ watch: ./src/auth/**
 1. Open /login
 2. Verify the form has email and password fields
 3. Verify "Forgot password" link is present
-```
+````
 
 ```
 $ testmd status
@@ -31,7 +31,7 @@ TEST.md
 
 ## Labels from filesystem (each with glob)
 
-```markdown
+````markdown
 # {service} healthcheck
 
 ```yaml
@@ -41,7 +41,7 @@ watch: ./services/{service}/**
 ```
 
 Verify `{service}` responds to GET /health with 200.
-```
+````
 
 With filesystem:
 ```
@@ -72,7 +72,7 @@ Adding a new service (`services/payments/`) automatically creates a new pending 
 
 ## Each with explicit values
 
-```markdown
+````markdown
 # API compatibility
 
 ```yaml
@@ -82,7 +82,7 @@ watch: ./api/**
 ```
 
 Verify the API contract for version `{version}`.
-```
+````
 
 ```
 $ testmd status
@@ -95,7 +95,7 @@ TEST.md
 
 ## Each with glob + explicit (cartesian product)
 
-```markdown
+````markdown
 # Deploy smoke test
 
 ```yaml
@@ -111,11 +111,11 @@ After deploying `{service}` to `{env}`:
 1. Verify the service starts
 2. Check /health returns 200
 3. Run basic smoke test
-```
+````
 
 ## Combinations for irregular sets
 
-```markdown
+````markdown
 # Database migrations
 
 ```yaml
@@ -128,11 +128,11 @@ watch: ./migrations/{db}/**
 ```
 
 Run `{suite}` migration tests for `{db}`.
-```
+````
 
 ## Multiple watch patterns
 
-```markdown
+````markdown
 # Config validation
 
 ```yaml
@@ -144,7 +144,7 @@ watch:
 ```
 
 Verify that `{env}` config validates against the JSON schema.
-```
+````
 
 Changes to any config directory OR `schema/config.json` will mark the test as outdated.
 
@@ -210,7 +210,7 @@ test:manual:
 
 ## Explicit ID for stable references
 
-```markdown
+````markdown
 # OAuth flow
 
 ```yaml
@@ -219,4 +219,4 @@ watch: ./services/auth/**
 ```
 
 This test has a stable id based on `oauth` (not the title) that won't change if the title is renamed.
-```
+````
