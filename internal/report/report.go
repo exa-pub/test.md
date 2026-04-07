@@ -300,6 +300,23 @@ func printInstanceLine(r models.StatusResult) {
 	fmt.Println()
 }
 
+// PrintCI prints failing tests in the same grouped format as status.
+func PrintCI(failing []models.StatusResult, root string) {
+	groups := groupBySource(failing, root)
+	for _, sg := range groups {
+		dim := color.New(color.Faint)
+		dim.Println(sg.source)
+		for _, g := range sg.defs {
+			bold := color.New(color.Bold)
+			bold.Printf("  %s\n", g.title)
+			for _, r := range g.results {
+				printInstanceLine(r)
+			}
+		}
+		fmt.Println()
+	}
+}
+
 func printSummary(results []models.StatusResult) {
 	counts := countStatuses(results)
 	parts := []struct {

@@ -1,17 +1,42 @@
 version: 1
 tests:
+  205620e3b0c4019ed1:
+    title: Skill teaches TEST.md authoring
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
+  490d2fe3b0c45ab752:
+    title: Agent skill is up to date
+    source: TEST.md
+    status: resolved
+    content_hash: 729d0da5d9b0a1c85086dbeb52f0c4ee68de3e75203d21257a558bda597b2840
+    resolved_at: "2026-04-07T18:59:18Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      docs/cli.md: 6c7e676bbc185d8d948ae5d01ef9312b0209d3d86e367bff8f780ea585d1f5eb
+      docs/specification.md: af278d2550b7d9fdd51ae615b9b2b1f13abd5a0272b6cce6cb79bc16c5580711
+      internal/cli/cli.go: c27b7bfadb2a762c15f9b104b6ba24b9df4615b468bc9b8df007b18f439277c4
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
   5c7541e3b0c45ab752:
     title: Go implementation works correctly
     source: TEST.md
     status: resolved
-    content_hash: 10bcf12a8c2ba1dc9a2e8849733727f3cb264f232b23f63250e9fa13cbc21703
-    resolved_at: "2026-04-07T17:39:31Z"
+    content_hash: ddc26bed973a0ce5eaf6a8d380bae70f7d51968b703023c021e859ac4b4699da
+    resolved_at: "2026-04-07T18:59:18Z"
     failed_at: null
     message: null
     labels: {}
     files:
       cmd/testmd/main.go: f68f17819d1ec13d0b8a1480a9999348e0825c1583a4d93eeebd2d28d33944af
-      internal/cli/cli.go: 0dcd8a8ea3b45ff4e68994a921173b27000f51ddcdc779041a4731af73a1f84d
+      internal/cli/cli.go: c27b7bfadb2a762c15f9b104b6ba24b9df4615b468bc9b8df007b18f439277c4
       internal/hashing/hashing.go: 7f956bd83bac38f29a81d42f8ab29880246251dd495c7741fbe079d55d5019bc
       internal/hashing/hashing_test.go: 6bcd339e43325be91eef12966726b45f8398c2bf3cc89012b7fd89fa02298749
       internal/models/models.go: 5e9ae43acc32bcb51195da16c1e6dbf52ec1460959c6ec08741e070131178b6f
@@ -20,8 +45,8 @@ tests:
       internal/parser/parser_test.go: fda96f7e75be18f26943594f90641652065fe54fe4afff27b602d93e02d39445
       internal/patterns/patterns.go: 6fda9b3548b37a3f8a1126bafbb674f04728eb6cee6a2701924acfa0c7806293
       internal/patterns/patterns_test.go: 787d576cbd4870b89d6f4058b6ba99a544703b24217f94a04dbe40deb7f93c8c
-      internal/report/report.go: dd42d277c71a207cda11bf0c40dee39488c48f1edb497d7e1234a08f90606737
-      internal/resolver/resolver.go: 50f2fe57347a7f48d665bb5320650419f25b477c71cf824840a5d193c92d3d72
+      internal/report/report.go: f54d14a202d6c8d6d96541d4c68c4f2f9118b43a533c4056750f04839c9180fa
+      internal/resolver/resolver.go: 3437ed52dcc10c81a783ca2fef20b226783453d0fd1ceae303ffdc9996c03208
       internal/resolver/resolver_test.go: 8543928605586216cef0eaf01ffe2e651102d7afc228073e0cb71aad638160ce
       internal/state/flock.go: 0dcbffdca49f2b85050ec2ff2fde05a68b6a81e34e37cacbd92575a23f4f77d8
       internal/state/state.go: 7a006ae227b2476d8e6278b0e03a4ce0071a74442b7701a022f49640b331a8f0
@@ -30,17 +55,76 @@ tests:
     title: Documentation is accurate
     source: TEST.md
     status: resolved
-    content_hash: 1866e3a5d6ed04bb5a6b55a46f7e69549f6de4c1ad74b383e363e0adc47de81b
-    resolved_at: "2026-04-07T17:39:31Z"
+    content_hash: 4c1fd26009e89bd3730d947a988c2d11669eebb0c63490754dab80fe97e1eb35
+    resolved_at: "2026-04-07T18:59:18Z"
     failed_at: null
     message: null
     labels: {}
     files:
-      README.md: 2ff83c513fc8b8683c673b0a362942a72c2adfdcccff4b5f81991461c712cf7b
+      README.md: f6574e0d2361e880220bfa51026259cb9c10b1564a966597d112a7d8630fe168
       docs/architecture.md: ab55a010efe6699a7ff81c3d6c7c7c44024a4e8f4e2df76f970e7c62981bbd95
-      docs/cli.md: 708f19f97c5ebe5f99d91f0ba574dde33468f7e550e7d4b94cd27df977fd7ac4
+      docs/cli.md: 6c7e676bbc185d8d948ae5d01ef9312b0209d3d86e367bff8f780ea585d1f5eb
       docs/examples.md: 5a0d8933eac7d52f4e7a61ceb638cd851cf702bf325166d85bebd4765832d62b
-      docs/specification.md: abc33b122b79141e41340ee174e5b4b0e0a1cffbe0ebc6aaaeb6e82bc15a25fb
+      docs/specification.md: af278d2550b7d9fdd51ae615b9b2b1f13abd5a0272b6cce6cb79bc16c5580711
+  a46e4ee3b0c4019ed1:
+    title: Skill teaches ci fix workflow
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
+  b3f18ce3b0c4019ed1:
+    title: Skill enforces correct tool usage
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
+  d00d48e3b0c4019ed1:
+    title: Skill documents commands and format accurately
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
+  d3f855e3b0c4019ed1:
+    title: Skill includes detailed documentation in references
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 01df20511127174f90a2a519c92e7c1bf63435710a3c313e766f03c77e391ba8
+    resolved_at: "2026-04-07T18:59:18Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
+      skills/testmd/references/architecture.md: f2883d29d3fca3c08484fc72729a46098058b592fc49e27fb7080fc61ad475b9
+      skills/testmd/references/cli.md: 5fd9380bb89d33334afefe0413699dab04f344668c2c7456a5bdb2aaff311d38
+      skills/testmd/references/examples.md: 51f598daebc3183f99161db7677dcbe4bb85184ff16f70d2245a02789a1ad1b2
+      skills/testmd/references/specification.md: 50c0057cab56738dda3f26e6be02a894ce587e8177a89a70f718e3482be568ba
+  d64569e3b0c4019ed1:
+    title: Skill describes installation correctly
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c
   d64569e3b0c41b9fb9:
     title: Skill describes installation correctly
     source: skills/testmd/TEST.md
@@ -52,3 +136,14 @@ tests:
     labels: {}
     files:
       skills/testmd/SKILL.md: daeaa43cc6f367cc2f92341893018fcfd99870dcf55782fc2c488d2f2de7f85b
+  fb0b4ae3b0c4019ed1:
+    title: Skill teaches meaningful resolve/fail
+    source: skills/TEST.md
+    status: resolved
+    content_hash: 2b3ba5d94ebd47249993960583038c38cc550ba5de4d9d79fe6019b056c9ca84
+    resolved_at: "2026-04-07T18:56:12Z"
+    failed_at: null
+    message: null
+    labels: {}
+    files:
+      skills/testmd/SKILL.md: 3c05fe91ec1dbc2c86607a04ce72943336656dcacacfdbc7a69680110792241c

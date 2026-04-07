@@ -293,21 +293,7 @@ func ciCmd(rootFlag *string) *cobra.Command {
 			bold := color.New(color.FgRed, color.Bold)
 			bold.Printf("FAIL: %d test(s) require attention\n\n", len(failing))
 
-			for _, r := range failing {
-				s := map[string]struct {
-					icon string
-					c    *color.Color
-				}{
-					"failed":   {"✗", color.New(color.FgRed)},
-					"outdated": {"⟳", color.New(color.FgYellow)},
-					"pending":  {"…", color.New(color.FgCyan)},
-				}[r.Status]
-				suffix := labelSuffix(r.Instance.Labels)
-				fmt.Printf("  %s  %s  %s%s  %s\n",
-					s.c.Sprint(s.icon), r.Instance.ID,
-					r.Instance.Definition.Title, suffix,
-					s.c.Sprint(r.Status))
-			}
+			report.PrintCI(failing, ctx.root)
 			os.Exit(1)
 			return nil
 		},

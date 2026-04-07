@@ -166,8 +166,10 @@ Like `status`, but exits with code 1 if any test is not resolved.
 $ testmd ci
 FAIL: 2 test(s) require attention
 
-  ✗  abc123789abc222333  OAuth login flow (provider=github env=prod)  failed
-  ⟳  abc123112233333444  OAuth login flow (provider=apple env=prod)   outdated
+TEST.md
+  OAuth login flow
+    ✗ abc123789abc222333  provider=github env=prod  failed  "Redirect broken"
+    ⟳ abc123112233333444  provider=apple  env=prod  outdated
 ```
 
 Exit codes:

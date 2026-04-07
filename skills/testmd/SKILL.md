@@ -47,7 +47,7 @@ In CI, `testmd ci` exits non-zero if any test is not `resolved`.
 
 All commands accept `--root PATH` to specify the project root explicitly.
 
-IDs are 18 hex characters (`aabbccddeeffgghhii`) with three 6-char segments: hash of title, hash of labels, hash of source path. Prefix matching is supported: 6 chars matches all instances of a test, 12 chars matches specific labels, 18 chars is exact match.
+IDs are 18 hex characters (`aabbccddeeff112233`) with three 6-char segments: hash of title, hash of labels, hash of source path. Prefix matching is supported: 6 chars matches all instances of a test, 12 chars matches specific labels, 18 chars is exact match.
 
 ## Critical principles
 
