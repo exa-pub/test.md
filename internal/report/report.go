@@ -25,15 +25,19 @@ var statusStyles = map[string]struct {
 	"pending":  {"…", color.New(color.FgCyan)},
 }
 
-// PrintStatus prints the status of all tests to stdout.
-func PrintStatus(results []models.StatusResult) {
-	groups := groupByDefinition(results)
+// PrintStatus prints the status of all tests to stdout, grouped by source file.
+func PrintStatus(results []models.StatusResult, root string) {
+	groups := groupBySource(results, root)
 
-	for _, g := range groups {
-		bold := color.New(color.Bold)
-		bold.Println(g.title)
-		for _, r := range g.results {
-			printInstanceLine(r)
+	for _, sg := range groups {
+		dim := color.New(color.Faint)
+		dim.Println(sg.source)
+		for _, g := range sg.defs {
+			bold := color.New(color.Bold)
+			bold.Printf("  %s\n", g.title)
+			for _, r := range g.results {
+				printInstanceLine(r)
+			}
 		}
 		fmt.Println()
 	}
@@ -147,6 +151,7 @@ func WriteReportJSON(results []models.StatusResult, path string) error {
 	type testEntry struct {
 		ID      string            `json:"id"`
 		Title   string            `json:"title"`
+		Source  string            `json:"source"`
 		Labels  map[string]string `json:"labels"`
 		Status  string            `json:"status"`
 		Message *string           `json:"message"`
@@ -162,6 +167,7 @@ func WriteReportJSON(results []models.StatusResult, path string) error {
 		entries[i] = testEntry{
 			ID:      r.Instance.ID,
 			Title:   r.Instance.Definition.Title,
+			Source:  r.Instance.Definition.SourceFile,
 			Labels:  r.Instance.Labels,
 			Status:  r.Status,
 			Message: msg,
@@ -187,6 +193,56 @@ func WriteReportJSON(results []models.StatusResult, path string) error {
 	}
 	fmt.Printf("Report saved to %s\n", path)
 	return nil
+}
+
+// --- grouping ---
+
+type sourceGroup struct {
+	source string
+	defs   []defGroup
+}
+
+type defGroup struct {
+	title   string
+	defn    *models.TestDefinition
+	results []models.StatusResult
+}
+
+func groupBySource(results []models.StatusResult, root string) []sourceGroup {
+	type key struct {
+		source string
+		defn   *models.TestDefinition
+	}
+	sourceOrder := []string{}
+	sourceMap := map[string][]defGroup{}
+
+	for _, r := range results {
+		defn := r.Instance.Definition
+		src, _ := filepath.Rel(root, defn.SourceFile)
+		src = filepath.ToSlash(src)
+
+		defs, exists := sourceMap[src]
+		if !exists {
+			sourceOrder = append(sourceOrder, src)
+		}
+
+		if len(defs) > 0 && defs[len(defs)-1].defn == defn {
+			defs[len(defs)-1].results = append(defs[len(defs)-1].results, r)
+		} else {
+			defs = append(defs, defGroup{
+				title:   defn.Title,
+				defn:    defn,
+				results: []models.StatusResult{r},
+			})
+		}
+		sourceMap[src] = defs
+	}
+
+	groups := make([]sourceGroup, len(sourceOrder))
+	for i, src := range sourceOrder {
+		groups[i] = sourceGroup{source: src, defs: sourceMap[src]}
+	}
+	return groups
 }
 
 type group struct {
@@ -216,7 +272,7 @@ func printInstanceLine(r models.StatusResult) {
 	s := statusStyles[r.Status]
 	dim := color.New(color.Faint)
 
-	fmt.Print("  ")
+	fmt.Print("    ")
 	s.color.Print(s.icon)
 	fmt.Print(" ")
 	dim.Print(r.Instance.ID)

@@ -12,30 +12,8 @@ import (
 
 var yamlBlockRE = regexp.MustCompile("(?s)```ya?ml\n(.*?)```")
 
-// Frontmatter holds parsed frontmatter fields.
-type Frontmatter struct {
-	Include    []string `yaml:"include"`
-	Ignorefile string   `yaml:"ignorefile"`
-}
-
-// Parse parses TEST.md content into frontmatter and test definitions.
-func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error) {
-	var fm Frontmatter
-	lineOffset := 0
-
-	// 1. Extract frontmatter
-	if strings.HasPrefix(text, "---\n") {
-		end := strings.Index(text[4:], "\n---\n")
-		if end != -1 {
-			if err := yaml.Unmarshal([]byte(text[4:4+end]), &fm); err != nil {
-				return fm, nil, fmt.Errorf("invalid frontmatter: %w", err)
-			}
-			lineOffset = strings.Count(text[:4+end+5], "\n")
-			text = text[4+end+5:]
-		}
-	}
-
-	// 2. Parse tests
+// Parse parses TEST.md content into test definitions. No frontmatter.
+func Parse(text, sourceFile string) ([]models.TestDefinition, error) {
 	lines := strings.Split(text, "\n")
 	var tests []models.TestDefinition
 	i := 0
@@ -47,7 +25,7 @@ func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error
 		}
 
 		title := strings.TrimSpace(lines[i][2:])
-		sourceLine := i + 1 + lineOffset
+		sourceLine := i + 1
 		i++
 
 		var bodyLines []string
@@ -60,7 +38,7 @@ func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error
 
 		m := yamlBlockRE.FindStringSubmatchIndex(body)
 		if m == nil {
-			return fm, nil, fmt.Errorf("test '%s' (line %d): missing yaml config block", title, sourceLine)
+			return nil, fmt.Errorf("test '%s' (line %d): missing yaml config block", title, sourceLine)
 		}
 
 		yamlContent := body[m[2]:m[3]]
@@ -71,23 +49,23 @@ func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error
 			Combinations []map[string]interface{}  `yaml:"combinations"`
 		}
 		if err := yaml.Unmarshal([]byte(yamlContent), &config); err != nil {
-			return fm, nil, fmt.Errorf("test '%s' (line %d): invalid yaml: %w", title, sourceLine, err)
+			return nil, fmt.Errorf("test '%s' (line %d): invalid yaml: %w", title, sourceLine, err)
 		}
 
 		watch, err := toStringSlice(config.Watch)
 		if err != nil || len(watch) == 0 {
-			return fm, nil, fmt.Errorf("test '%s' (line %d): missing watch", title, sourceLine)
+			return nil, fmt.Errorf("test '%s' (line %d): missing watch", title, sourceLine)
 		}
 
 		if config.Each != nil && config.Combinations != nil {
-			return fm, nil, fmt.Errorf("test '%s' (line %d): cannot use both 'each' and 'combinations'", title, sourceLine)
+			return nil, fmt.Errorf("test '%s' (line %d): cannot use both 'each' and 'combinations'", title, sourceLine)
 		}
 
 		var each map[string]models.EachSource
 		if config.Each != nil {
 			each, err = parseEachMap(config.Each)
 			if err != nil {
-				return fm, nil, fmt.Errorf("test '%s' (line %d): invalid each: %w", title, sourceLine, err)
+				return nil, fmt.Errorf("test '%s' (line %d): invalid each: %w", title, sourceLine, err)
 			}
 		}
 
@@ -96,7 +74,7 @@ func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error
 			for j, entry := range config.Combinations {
 				parsed, err := parseEachMap(entry)
 				if err != nil {
-					return fm, nil, fmt.Errorf("test '%s' (line %d): invalid combinations[%d]: %w", title, sourceLine, j, err)
+					return nil, fmt.Errorf("test '%s' (line %d): invalid combinations[%d]: %w", title, sourceLine, j, err)
 				}
 				combinations = append(combinations, parsed)
 			}
@@ -116,7 +94,7 @@ func Parse(text, sourceFile string) (Frontmatter, []models.TestDefinition, error
 		})
 	}
 
-	return fm, tests, nil
+	return tests, nil
 }
 
 func parseEachMap(raw map[string]interface{}) (map[string]models.EachSource, error) {

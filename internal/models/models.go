@@ -1,5 +1,10 @@
 package models
 
+// Config holds project configuration from .testmd.yaml.
+type Config struct {
+	Ignorefile string `yaml:"ignorefile"`
+}
+
 // EachSource defines where variable values come from.
 // Exactly one of Glob or Values is set.
 type EachSource struct {
@@ -30,22 +35,23 @@ type TestInstance struct {
 	FileHashes       map[string]string
 }
 
-// TestRecord is a state entry stored in TEST.md.lock.
+// TestRecord is a state entry stored in .testmd.lock.
 type TestRecord struct {
-	Title       string            `json:"title"`
-	Labels      map[string]string `json:"labels"`
-	ContentHash string            `json:"content_hash"`
-	Files       map[string]string `json:"files"`
-	Status      string            `json:"status"`
-	ResolvedAt  *string           `json:"resolved_at"`
-	FailedAt    *string           `json:"failed_at"`
-	Message     *string           `json:"message"`
+	Title       string            `yaml:"title"`
+	Source      string            `yaml:"source"`
+	Labels      map[string]string `yaml:"labels"`
+	ContentHash string            `yaml:"content_hash"`
+	Files       map[string]string `yaml:"files"`
+	Status      string            `yaml:"status"`
+	ResolvedAt  *string           `yaml:"resolved_at"`
+	FailedAt    *string           `yaml:"failed_at"`
+	Message     *string           `yaml:"message"`
 }
 
 // State is the top-level state structure in the lock file.
 type State struct {
-	Version int                    `json:"version"`
-	Tests   map[string]*TestRecord `json:"tests"`
+	Version int                    `yaml:"version"`
+	Tests   map[string]*TestRecord `yaml:"tests"`
 }
 
 // StatusResult pairs an instance with its effective status.

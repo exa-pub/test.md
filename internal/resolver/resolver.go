@@ -17,6 +17,9 @@ import (
 func BuildInstances(root string, defs []models.TestDefinition, ig *ignore.GitIgnore) ([]*models.TestInstance, error) {
 	var instances []*models.TestInstance
 
+	// Lock file to exclude from hashing
+	const lockName = ".testmd.lock"
+
 	for i := range defs {
 		defn := &defs[i]
 		watch := rebasePatterns(root, defn.SourceFile, defn.Watch)
@@ -32,9 +35,9 @@ func BuildInstances(root string, defs []models.TestDefinition, ig *ignore.GitIgn
 			labelCombos = []map[string]string{{}}
 		}
 
-		// Exclude the lock file from hashing — it changes on every resolve.
-		lockRel, _ := filepath.Rel(root, defn.SourceFile+".lock")
-		lockRel = filepath.ToSlash(lockRel)
+		// Compute relative source path for ID generation
+		sourcePath, _ := filepath.Rel(root, defn.SourceFile)
+		sourcePath = filepath.ToSlash(sourcePath)
 
 		for _, labels := range labelCombos {
 			var resolvedPatterns []string
@@ -56,7 +59,7 @@ func BuildInstances(root string, defs []models.TestDefinition, ig *ignore.GitIgn
 				}
 			}
 
-			delete(allFiles, lockRel)
+			delete(allFiles, lockName)
 
 			matched := make([]string, 0, len(allFiles))
 			for f := range allFiles {
@@ -68,7 +71,7 @@ func BuildInstances(root string, defs []models.TestDefinition, ig *ignore.GitIgn
 			if err != nil {
 				return nil, err
 			}
-			tid := hashing.MakeID(defn.Title, defn.ExplicitID, labels)
+			tid := hashing.MakeID(defn.Title, defn.ExplicitID, labels, sourcePath)
 
 			instances = append(instances, &models.TestInstance{
 				ID:               tid,
@@ -103,16 +106,16 @@ func ComputeStatuses(instances []*models.TestInstance, st *models.State) []model
 }
 
 // ResolveTest marks a test as resolved.
-func ResolveTest(st *models.State, inst *models.TestInstance) {
+func ResolveTest(st *models.State, inst *models.TestInstance, root string) {
 	now := time.Now().UTC().Format(time.RFC3339)
-	st.Tests[inst.ID] = makeRecord(inst, "resolved")
+	st.Tests[inst.ID] = makeRecord(inst, "resolved", root)
 	st.Tests[inst.ID].ResolvedAt = &now
 }
 
 // FailTest marks a test as failed with a message.
-func FailTest(st *models.State, inst *models.TestInstance, message string) {
+func FailTest(st *models.State, inst *models.TestInstance, message string, root string) {
 	now := time.Now().UTC().Format(time.RFC3339)
-	st.Tests[inst.ID] = makeRecord(inst, "failed")
+	st.Tests[inst.ID] = makeRecord(inst, "failed", root)
 	st.Tests[inst.ID].FailedAt = &now
 	st.Tests[inst.ID].Message = &message
 }
@@ -135,39 +138,22 @@ func GCState(st *models.State, instances []*models.TestInstance) int {
 	return len(orphans)
 }
 
-// FindInstances finds instances matching a full id, first-part, or prefix.
+// FindInstances finds instances matching by prefix (pure prefix match).
 func FindInstances(instances []*models.TestInstance, query string) []*models.TestInstance {
-	// Exact match
-	var exact []*models.TestInstance
+	// Exact match first
 	for _, inst := range instances {
 		if inst.ID == query {
-			exact = append(exact, inst)
+			return []*models.TestInstance{inst}
 		}
 	}
-	if len(exact) > 0 {
-		return exact
-	}
-
-	// First-part match
-	var byFirst []*models.TestInstance
-	for _, inst := range instances {
-		parts := strings.SplitN(inst.ID, "-", 2)
-		if parts[0] == query {
-			byFirst = append(byFirst, inst)
-		}
-	}
-	if len(byFirst) > 0 {
-		return byFirst
-	}
-
 	// Prefix match
-	var byPrefix []*models.TestInstance
+	var matches []*models.TestInstance
 	for _, inst := range instances {
 		if strings.HasPrefix(inst.ID, query) {
-			byPrefix = append(byPrefix, inst)
+			matches = append(matches, inst)
 		}
 	}
-	return byPrefix
+	return matches
 }
 
 // ChangedFiles returns files that differ between instance and stored record.
@@ -246,7 +232,7 @@ func rebaseCombinations(root, sourceFile string, combos []map[string]models.Each
 	return rebased
 }
 
-func makeRecord(inst *models.TestInstance, status string) *models.TestRecord {
+func makeRecord(inst *models.TestInstance, status string, root string) *models.TestRecord {
 	labels := inst.Labels
 	if labels == nil {
 		labels = map[string]string{}
@@ -255,8 +241,11 @@ func makeRecord(inst *models.TestInstance, status string) *models.TestRecord {
 	if files == nil {
 		files = map[string]string{}
 	}
+	source, _ := filepath.Rel(root, inst.Definition.SourceFile)
+	source = filepath.ToSlash(source)
 	return &models.TestRecord{
 		Title:       inst.Definition.Title,
+		Source:      source,
 		Labels:      labels,
 		ContentHash: inst.ContentHash,
 		Files:       files,

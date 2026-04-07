@@ -32,7 +32,7 @@ func instance(tid, title string, labels map[string]string, matchedFiles []string
 		title = "Test"
 	}
 	if tid == "" {
-		tid = "aaa-bbb"
+		tid = "aaabbbcccdddeee111"
 	}
 	if labels == nil {
 		labels = map[string]string{}
@@ -85,6 +85,10 @@ func TestBuildInstances(t *testing.T) {
 		}
 		if len(instances[0].Labels) != 0 {
 			t.Errorf("expected empty labels, got %v", instances[0].Labels)
+		}
+		// ID should be 18 hex chars
+		if len(instances[0].ID) != 18 {
+			t.Errorf("expected 18-char ID, got %d: %q", len(instances[0].ID), instances[0].ID)
 		}
 	})
 
@@ -173,6 +177,28 @@ func TestBuildInstances(t *testing.T) {
 			t.Errorf("expected sub/lib/a.py in matched_files, got %v", instances[0].MatchedFiles)
 		}
 	})
+
+	t.Run("source_path_in_id", func(t *testing.T) {
+		tmp := t.TempDir()
+		os.WriteFile(filepath.Join(tmp, "main.py"), []byte("x"), 0644)
+		sf1 := filepath.Join(tmp, "TEST.md")
+		sf2 := filepath.Join(tmp, "sub", "TEST.md")
+		os.MkdirAll(filepath.Join(tmp, "sub"), 0755)
+
+		d1 := defn("Test", []string{"main.py"}, nil, nil, "", sf1)
+		d2 := defn("Test", []string{"main.py"}, nil, nil, "", sf2)
+
+		inst1, _ := BuildInstances(tmp, []models.TestDefinition{d1}, nil)
+		inst2, _ := BuildInstances(tmp, []models.TestDefinition{d2}, nil)
+
+		if inst1[0].ID == inst2[0].ID {
+			t.Errorf("same title in different files should have different IDs: %s vs %s", inst1[0].ID, inst2[0].ID)
+		}
+		// First 12 chars (title+labels) should be same
+		if inst1[0].ID[:12] != inst2[0].ID[:12] {
+			t.Errorf("first 12 chars should match (same title+labels): %s vs %s", inst1[0].ID[:12], inst2[0].ID[:12])
+		}
+	})
 }
 
 func TestComputeStatuses(t *testing.T) {
@@ -186,9 +212,9 @@ func TestComputeStatuses(t *testing.T) {
 	})
 
 	t.Run("resolved", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, nil, "abc", nil)
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "abc", nil)
 		st := emptyState()
-		st.Tests["aaa-bbb"] = &models.TestRecord{ContentHash: "abc", Status: "resolved"}
+		st.Tests["aaabbbcccdddeee111"] = &models.TestRecord{ContentHash: "abc", Status: "resolved"}
 		results := ComputeStatuses([]*models.TestInstance{inst}, st)
 		if results[0].Status != "resolved" {
 			t.Errorf("expected resolved, got %s", results[0].Status)
@@ -196,9 +222,9 @@ func TestComputeStatuses(t *testing.T) {
 	})
 
 	t.Run("outdated", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, nil, "new_hash", nil)
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "new_hash", nil)
 		st := emptyState()
-		st.Tests["aaa-bbb"] = &models.TestRecord{ContentHash: "old_hash", Status: "resolved"}
+		st.Tests["aaabbbcccdddeee111"] = &models.TestRecord{ContentHash: "old_hash", Status: "resolved"}
 		results := ComputeStatuses([]*models.TestInstance{inst}, st)
 		if results[0].Status != "outdated" {
 			t.Errorf("expected outdated, got %s", results[0].Status)
@@ -206,9 +232,9 @@ func TestComputeStatuses(t *testing.T) {
 	})
 
 	t.Run("failed", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, nil, "h", nil)
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "h", nil)
 		st := emptyState()
-		st.Tests["aaa-bbb"] = &models.TestRecord{ContentHash: "h", Status: "failed"}
+		st.Tests["aaabbbcccdddeee111"] = &models.TestRecord{ContentHash: "h", Status: "failed"}
 		results := ComputeStatuses([]*models.TestInstance{inst}, st)
 		if results[0].Status != "failed" {
 			t.Errorf("expected failed, got %s", results[0].Status)
@@ -218,11 +244,13 @@ func TestComputeStatuses(t *testing.T) {
 
 func TestResolveTest(t *testing.T) {
 	t.Run("updates_state", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, []string{"f.txt"}, "ch", map[string]string{"f.txt": "fh"})
+		tmp := t.TempDir()
+		inst := instance("aaabbbcccdddeee111", "", nil, []string{"f.txt"}, "ch", map[string]string{"f.txt": "fh"})
+		inst.Definition.SourceFile = filepath.Join(tmp, "TEST.md")
 		st := emptyState()
-		ResolveTest(st, inst)
+		ResolveTest(st, inst, tmp)
 
-		rec := st.Tests["aaa-bbb"]
+		rec := st.Tests["aaabbbcccdddeee111"]
 		if rec == nil {
 			t.Fatal("expected record")
 		}
@@ -238,16 +266,21 @@ func TestResolveTest(t *testing.T) {
 		if rec.ResolvedAt == nil {
 			t.Error("expected resolved_at to be set")
 		}
+		if rec.Source != "TEST.md" {
+			t.Errorf("expected source 'TEST.md', got %q", rec.Source)
+		}
 	})
 }
 
 func TestFailTest(t *testing.T) {
 	t.Run("updates_state_with_message", func(t *testing.T) {
-		inst := instance("", "", nil, nil, "", nil)
+		tmp := t.TempDir()
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "", nil)
+		inst.Definition.SourceFile = filepath.Join(tmp, "TEST.md")
 		st := emptyState()
-		FailTest(st, inst, "broken")
+		FailTest(st, inst, "broken", tmp)
 
-		rec := st.Tests["aaa-bbb"]
+		rec := st.Tests["aaabbbcccdddeee111"]
 		if rec == nil {
 			t.Fatal("expected record")
 		}
@@ -262,10 +295,10 @@ func TestFailTest(t *testing.T) {
 
 func TestGCState(t *testing.T) {
 	t.Run("removes_orphans", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, nil, "", nil)
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "", nil)
 		st := emptyState()
-		st.Tests["aaa-bbb"] = &models.TestRecord{Status: "resolved"}
-		st.Tests["old-one"] = &models.TestRecord{Status: "resolved"}
+		st.Tests["aaabbbcccdddeee111"] = &models.TestRecord{Status: "resolved"}
+		st.Tests["orphan000000000000"] = &models.TestRecord{Status: "resolved"}
 
 		removed := GCState(st, []*models.TestInstance{inst})
 		if removed != 1 {
@@ -274,9 +307,9 @@ func TestGCState(t *testing.T) {
 	})
 
 	t.Run("nothing_to_gc", func(t *testing.T) {
-		inst := instance("aaa-bbb", "", nil, nil, "", nil)
+		inst := instance("aaabbbcccdddeee111", "", nil, nil, "", nil)
 		st := emptyState()
-		st.Tests["aaa-bbb"] = &models.TestRecord{Status: "resolved"}
+		st.Tests["aaabbbcccdddeee111"] = &models.TestRecord{Status: "resolved"}
 
 		removed := GCState(st, []*models.TestInstance{inst})
 		if removed != 0 {
@@ -288,20 +321,20 @@ func TestGCState(t *testing.T) {
 func TestFindInstances(t *testing.T) {
 	mkInstances := func() []*models.TestInstance {
 		return []*models.TestInstance{
-			instance("abc123-def456", "", nil, nil, "", nil),
-			instance("abc123-aaa111", "", nil, nil, "", nil),
-			instance("xyz789-bbb222", "", nil, nil, "", nil),
+			instance("abc123def456111222", "", nil, nil, "", nil),
+			instance("abc123aaa111222333", "", nil, nil, "", nil),
+			instance("xyz789bbb222333444", "", nil, nil, "", nil),
 		}
 	}
 
 	t.Run("exact_match", func(t *testing.T) {
-		result := FindInstances(mkInstances(), "abc123-def456")
-		if len(result) != 1 || result[0].ID != "abc123-def456" {
+		result := FindInstances(mkInstances(), "abc123def456111222")
+		if len(result) != 1 || result[0].ID != "abc123def456111222" {
 			t.Errorf("expected exact match, got %v", ids(result))
 		}
 	})
 
-	t.Run("first_part_match", func(t *testing.T) {
+	t.Run("prefix_6_chars_matches_title", func(t *testing.T) {
 		result := FindInstances(mkInstances(), "abc123")
 		if len(result) != 2 {
 			t.Errorf("expected 2 matches, got %d: %v", len(result), ids(result))
@@ -310,8 +343,8 @@ func TestFindInstances(t *testing.T) {
 
 	t.Run("prefix_match", func(t *testing.T) {
 		result := FindInstances(mkInstances(), "xyz")
-		if len(result) != 1 || result[0].ID != "xyz789-bbb222" {
-			t.Errorf("expected xyz789-bbb222, got %v", ids(result))
+		if len(result) != 1 || result[0].ID != "xyz789bbb222333444" {
+			t.Errorf("expected xyz789bbb222333444, got %v", ids(result))
 		}
 	})
 

@@ -47,8 +47,9 @@ func HashFiles(root string, files []string) (string, map[string]string, error) {
 	return fmt.Sprintf("%x", h[:]), fileHashes, nil
 }
 
-// MakeID generates a test ID: sha256(title_or_id)[:6] + "-" + sha256(labels)[:6].
-func MakeID(title, explicitID string, labels map[string]string) string {
+// MakeID generates a test ID: 18 hex chars (no separators).
+// Format: hash6(title_or_id) + hash6(labels) + hash6(sourcePath)
+func MakeID(title, explicitID string, labels map[string]string, sourcePath string) string {
 	source := title
 	if explicitID != "" {
 		source = explicitID
@@ -70,7 +71,9 @@ func MakeID(title, explicitID string, labels map[string]string) string {
 	}
 	second := hash6(labelStr)
 
-	return first + "-" + second
+	third := hash6(sourcePath)
+
+	return first + second + third
 }
 
 func hash6(s string) string {

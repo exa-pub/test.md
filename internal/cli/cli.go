@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/fatih/color"
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/testmd/testmd/internal/models"
@@ -17,10 +20,9 @@ import (
 )
 
 type context struct {
-	root        string
-	instances   []*models.TestInstance
-	state       *models.State
-	sourceFiles map[string]bool // set of TEST.md file paths
+	root      string
+	instances []*models.TestInstance
+	state     *models.State
 }
 
 // Run executes the CLI.
@@ -32,16 +34,17 @@ func Run() {
 		SilenceErrors: true,
 	}
 
-	var testmdPath string
-	rootCmd.PersistentFlags().StringVar(&testmdPath, "testmd", "", "Path to TEST.md or its directory")
+	var rootFlag string
+	rootCmd.PersistentFlags().StringVar(&rootFlag, "root", "", "Path to project root (directory containing .testmd.yaml)")
 
 	rootCmd.AddCommand(
-		statusCmd(&testmdPath),
-		resolveCmd(&testmdPath),
-		failCmd(&testmdPath),
-		getCmd(&testmdPath),
-		gcCmd(&testmdPath),
-		ciCmd(&testmdPath),
+		statusCmd(&rootFlag),
+		resolveCmd(&rootFlag),
+		failCmd(&rootFlag),
+		getCmd(&rootFlag),
+		gcCmd(&rootFlag),
+		ciCmd(&rootFlag),
+		initCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
@@ -50,18 +53,18 @@ func Run() {
 	}
 }
 
-func statusCmd(testmdPath *string) *cobra.Command {
+func statusCmd(rootFlag *string) *cobra.Command {
 	var reportMD, reportJSON string
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show status of all tests",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
 			results := resolver.ComputeStatuses(ctx.instances, ctx.state)
-			report.PrintStatus(results)
+			report.PrintStatus(results, ctx.root)
 			if reportMD != "" {
 				if err := report.WriteReportMD(results, reportMD); err != nil {
 					return err
@@ -80,13 +83,13 @@ func statusCmd(testmdPath *string) *cobra.Command {
 	return cmd
 }
 
-func resolveCmd(testmdPath *string) *cobra.Command {
+func resolveCmd(rootFlag *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "resolve <id>",
 		Short: "Mark test(s) as resolved",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
@@ -94,23 +97,37 @@ func resolveCmd(testmdPath *string) *cobra.Command {
 			if len(matches) == 0 {
 				return fmt.Errorf("no test matching '%s'", args[0])
 			}
+
+			lk := lockPath(ctx.root)
+			f, err := state.Lock(lk)
+			if err != nil {
+				return fmt.Errorf("lock: %w", err)
+			}
+			defer state.Unlock(f)
+
+			// Reload state under lock
+			ctx.state, err = state.Load(lk)
+			if err != nil {
+				return err
+			}
+
 			for _, inst := range matches {
-				resolver.ResolveTest(ctx.state, inst)
+				resolver.ResolveTest(ctx.state, inst, ctx.root)
 				suffix := labelSuffix(inst.Labels)
 				fmt.Printf("Resolved: %s%s\n", inst.Definition.Title, suffix)
 			}
-			return save(ctx)
+			return state.Save(lk, ctx.state)
 		},
 	}
 }
 
-func failCmd(testmdPath *string) *cobra.Command {
+func failCmd(rootFlag *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "fail <id> <message>",
 		Short: "Mark test as failed with a message",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
@@ -118,24 +135,37 @@ func failCmd(testmdPath *string) *cobra.Command {
 			if len(matches) == 0 {
 				return fmt.Errorf("no test matching '%s'", args[0])
 			}
+
+			lk := lockPath(ctx.root)
+			f, err := state.Lock(lk)
+			if err != nil {
+				return fmt.Errorf("lock: %w", err)
+			}
+			defer state.Unlock(f)
+
+			ctx.state, err = state.Load(lk)
+			if err != nil {
+				return err
+			}
+
 			for _, inst := range matches {
-				resolver.FailTest(ctx.state, inst, args[1])
+				resolver.FailTest(ctx.state, inst, args[1], ctx.root)
 				suffix := labelSuffix(inst.Labels)
 				fmt.Printf("Failed: %s%s\n", inst.Definition.Title, suffix)
 				fmt.Printf("  Message: %s\n", args[1])
 			}
-			return save(ctx)
+			return state.Save(lk, ctx.state)
 		},
 	}
 }
 
-func getCmd(testmdPath *string) *cobra.Command {
+func getCmd(rootFlag *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Show test details and description",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
@@ -155,17 +185,30 @@ func getCmd(testmdPath *string) *cobra.Command {
 	}
 }
 
-func gcCmd(testmdPath *string) *cobra.Command {
+func gcCmd(rootFlag *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "gc",
 		Short: "Remove orphaned test records",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
+
+			lk := lockPath(ctx.root)
+			f, err := state.Lock(lk)
+			if err != nil {
+				return fmt.Errorf("lock: %w", err)
+			}
+			defer state.Unlock(f)
+
+			ctx.state, err = state.Load(lk)
+			if err != nil {
+				return err
+			}
+
 			n := resolver.GCState(ctx.state, ctx.instances)
-			if err := save(ctx); err != nil {
+			if err := state.Save(lk, ctx.state); err != nil {
 				return err
 			}
 			fmt.Printf("Removed %d orphaned record(s).\n", n)
@@ -174,13 +217,13 @@ func gcCmd(testmdPath *string) *cobra.Command {
 	}
 }
 
-func ciCmd(testmdPath *string) *cobra.Command {
+func ciCmd(rootFlag *string) *cobra.Command {
 	var reportMD, reportJSON string
 	cmd := &cobra.Command{
 		Use:   "ci",
 		Short: "Check all tests pass (for CI). Exits 1 if any test needs attention",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := load(*testmdPath)
+			ctx, err := load(*rootFlag)
 			if err != nil {
 				return err
 			}
@@ -236,9 +279,39 @@ func ciCmd(testmdPath *string) *cobra.Command {
 	return cmd
 }
 
-// --- path resolution ---
+func initCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Create .testmd.yaml in current directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, name := range []string{".testmd.yaml", ".testmd.yml"} {
+				if _, err := os.Stat(name); err == nil {
+					return fmt.Errorf("%s already exists", name)
+				}
+			}
+			if err := os.WriteFile(".testmd.yaml", []byte("ignorefile: .gitignore\n"), 0644); err != nil {
+				return err
+			}
+			fmt.Println("Created .testmd.yaml")
+			return nil
+		},
+	}
+}
 
-func findTestMDUpward() (string, error) {
+// --- root / config discovery ---
+
+func findRoot(rootFlag string) (string, error) {
+	if rootFlag != "" {
+		abs, err := filepath.Abs(rootFlag)
+		if err != nil {
+			return "", err
+		}
+		if hasConfig(abs) {
+			return abs, nil
+		}
+		return "", fmt.Errorf("no .testmd.yaml or .testmd.yml in %s", abs)
+	}
+
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -247,155 +320,127 @@ func findTestMDUpward() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	for {
-		candidate := filepath.Join(dir, "TEST.md")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
+		if hasConfig(dir) {
+			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("no TEST.md found (searched from cwd to filesystem root)")
+			return "", fmt.Errorf("no .testmd.yaml found (searched from cwd to filesystem root)")
 		}
 		dir = parent
 	}
 }
 
-func resolvePath(testmdPath string) (testFile, root string, err error) {
-	if testmdPath == "" {
-		testFile, err = findTestMDUpward()
+func hasConfig(dir string) bool {
+	for _, name := range []string{".testmd.yaml", ".testmd.yml"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func loadConfig(root string) (models.Config, error) {
+	for _, name := range []string{".testmd.yaml", ".testmd.yml"} {
+		path := filepath.Join(root, name)
+		data, err := os.ReadFile(path)
 		if err != nil {
-			return "", "", err
+			continue
 		}
-		return testFile, filepath.Dir(testFile), nil
+		return parser.ParseConfig(data)
 	}
+	return models.Config{Ignorefile: ".gitignore"}, nil
+}
 
-	abs, err := filepath.Abs(testmdPath)
-	if err != nil {
-		return "", "", err
-	}
+// --- TEST.md discovery ---
 
-	info, err := os.Stat(abs)
-	if err != nil {
-		return "", "", fmt.Errorf("path not found: %s", testmdPath)
-	}
-
-	if info.IsDir() {
-		testFile = filepath.Join(abs, "TEST.md")
-		if _, err := os.Stat(testFile); err != nil {
-			return "", "", fmt.Errorf("no TEST.md in %s", abs)
+func discoverTestFiles(root string, ig *ignore.GitIgnore) ([]string, error) {
+	var files []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-		return testFile, abs, nil
-	}
+		rel, _ := filepath.Rel(root, path)
+		rel = filepath.ToSlash(rel)
 
-	return abs, filepath.Dir(abs), nil
+		if info.IsDir() {
+			if strings.HasPrefix(info.Name(), ".") && rel != "." {
+				return filepath.SkipDir
+			}
+			if ig != nil && rel != "." && ig.MatchesPath(rel+"/") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if info.Name() == "TEST.md" {
+			if ig == nil || !ig.MatchesPath(rel) {
+				files = append(files, path)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 // --- load / save ---
 
-func load(testmdPath string) (*context, error) {
-	testFile, root, err := resolvePath(testmdPath)
+func load(rootFlag string) (*context, error) {
+	root, err := findRoot(rootFlag)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(testFile)
+	cfg, err := loadConfig(root)
 	if err != nil {
 		return nil, err
 	}
 
-	fm, defs, err := parser.Parse(string(data), testFile)
+	ig := patterns.LoadIgnorefile(root, cfg.Ignorefile)
+
+	testFiles, err := discoverTestFiles(root, ig)
 	if err != nil {
 		return nil, err
 	}
 
-	// Handle includes
-	for _, inc := range fm.Include {
-		incFile, err := filepath.Abs(filepath.Join(filepath.Dir(testFile), inc))
+	var allDefs []models.TestDefinition
+	for _, tf := range testFiles {
+		data, err := os.ReadFile(tf)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := os.Stat(incFile); err != nil {
-			return nil, fmt.Errorf("included file not found: %s", inc)
-		}
-		incData, err := os.ReadFile(incFile)
+		defs, err := parser.Parse(string(data), tf)
 		if err != nil {
 			return nil, err
 		}
-		incFM, incDefs, err := parser.Parse(string(incData), incFile)
-		if err != nil {
-			return nil, err
-		}
-		if len(incFM.Include) > 0 {
-			return nil, fmt.Errorf("nested includes are not supported: %s includes %v", inc, incFM.Include)
-		}
-		defs = append(defs, incDefs...)
+		allDefs = append(allDefs, defs...)
 	}
 
-	ignorefile := fm.Ignorefile
-	if ignorefile == "" {
-		ignorefile = ".gitignore"
-	}
-	ig := patterns.LoadIgnorefile(root, ignorefile)
-
-	instances, err := resolver.BuildInstances(root, defs, ig)
+	instances, err := resolver.BuildInstances(root, allDefs, ig)
 	if err != nil {
 		return nil, err
 	}
 
-	// Load and merge state from all source lock files
-	sourceFiles := map[string]bool{testFile: true}
-	for _, d := range defs {
-		sourceFiles[d.SourceFile] = true
-	}
-
-	st := &models.State{Version: 1, Tests: map[string]*models.TestRecord{}}
-	for sf := range sourceFiles {
-		fileSt, err := state.Load(lockPath(sf))
-		if err != nil {
-			return nil, err
-		}
-		for id, rec := range fileSt.Tests {
-			st.Tests[id] = rec
-		}
+	st, err := state.Load(lockPath(root))
+	if err != nil {
+		return nil, err
 	}
 
 	return &context{
-		root:        root,
-		instances:   instances,
-		state:       st,
-		sourceFiles: sourceFiles,
+		root:      root,
+		instances: instances,
+		state:     st,
 	}, nil
 }
 
-func save(ctx *context) error {
-	// Group test IDs by source file
-	idsByFile := map[string]map[string]bool{}
-	for sf := range ctx.sourceFiles {
-		idsByFile[sf] = map[string]bool{}
-	}
-	for _, inst := range ctx.instances {
-		sf := inst.Definition.SourceFile
-		if _, ok := idsByFile[sf]; ok {
-			idsByFile[sf][inst.ID] = true
-		}
-	}
-
-	for sf, ids := range idsByFile {
-		fileSt := &models.State{Version: 1, Tests: map[string]*models.TestRecord{}}
-		for id := range ids {
-			if rec, ok := ctx.state.Tests[id]; ok {
-				fileSt.Tests[id] = rec
-			}
-		}
-		if err := state.Save(lockPath(sf), fileSt); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func lockPath(testFile string) string {
-	return testFile + ".lock"
+func lockPath(root string) string {
+	return filepath.Join(root, ".testmd.lock")
 }
 
 func labelSuffix(labels map[string]string) string {
@@ -407,6 +452,5 @@ func labelSuffix(labels map[string]string) string {
 }
 
 func init() {
-	// Disable cobra completions command
 	cobra.EnableCommandSorting = false
 }

@@ -11,12 +11,9 @@ func makeTest(title, watch string) string {
 
 func TestParseSingleTest_Basic(t *testing.T) {
 	text := makeTest("My Test", "src/**/*")
-	fm, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
-	}
-	if len(fm.Include) != 0 {
-		t.Errorf("expected empty include, got %v", fm.Include)
 	}
 	if len(tests) != 1 {
 		t.Fatalf("expected 1 test, got %d", len(tests))
@@ -42,9 +39,9 @@ func TestParseSingleTest_Basic(t *testing.T) {
 	}
 }
 
-func TestParseSingleTest_SourceLineNoFrontmatter(t *testing.T) {
+func TestParseSingleTest_SourceLine(t *testing.T) {
 	text := makeTest("My Test", "src/**/*")
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +52,7 @@ func TestParseSingleTest_SourceLineNoFrontmatter(t *testing.T) {
 
 func TestParseSingleTest_WatchAsList(t *testing.T) {
 	text := "# T\n\n```yaml\nwatch:\n  - a.txt\n  - b.txt\n```\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +63,7 @@ func TestParseSingleTest_WatchAsList(t *testing.T) {
 
 func TestParseSingleTest_WatchAsString(t *testing.T) {
 	text := "# T\n\n```yaml\nwatch: foo.py\n```\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +74,7 @@ func TestParseSingleTest_WatchAsString(t *testing.T) {
 
 func TestParseSingleTest_ExplicitID(t *testing.T) {
 	text := "# T\n\n```yaml\nid: my-id\nwatch: x\n```\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +85,7 @@ func TestParseSingleTest_ExplicitID(t *testing.T) {
 
 func TestParseSingleTest_EachParsed(t *testing.T) {
 	text := "# T\n\n```yaml\neach:\n  svc: ./services/*/\n  env: [prod, staging]\nwatch: ./services/{svc}/**\n```\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +104,7 @@ func TestParseSingleTest_EachParsed(t *testing.T) {
 
 func TestParseSingleTest_CombinationsParsed(t *testing.T) {
 	text := "# T\n\n```yaml\ncombinations:\n  - db: [postgres, mysql]\n    suite: [full]\n  - db: [sqlite]\n    suite: [basic]\nwatch: ./migrations/{db}/**\n```\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +119,7 @@ func TestParseSingleTest_CombinationsParsed(t *testing.T) {
 
 func TestParseMultipleTests_TwoTests(t *testing.T) {
 	text := makeTest("First", "a.txt") + "\n" + makeTest("Second", "b.txt")
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,35 +134,22 @@ func TestParseMultipleTests_TwoTests(t *testing.T) {
 	}
 }
 
-func TestFrontmatter_Extracted(t *testing.T) {
+func TestNoFrontmatter_PlainMarkdown(t *testing.T) {
+	// Frontmatter is no longer parsed — it's treated as plain content
 	text := "---\ninclude:\n  - other.md\n---\n" + makeTest("My Test", "src/**/*")
-	fm, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fm.Include) != 1 || fm.Include[0] != "other.md" {
-		t.Errorf("expected include [other.md], got %v", fm.Include)
-	}
+	// The --- block is not a heading, so only the # heading produces a test
 	if len(tests) != 1 {
 		t.Fatalf("expected 1 test, got %d", len(tests))
 	}
 }
 
-func TestFrontmatter_SourceLineWithFrontmatter(t *testing.T) {
-	frontmatter := "---\ninclude:\n  - other.md\n---\n"
-	text := frontmatter + makeTest("My Test", "src/**/*")
-	_, tests, err := Parse(text, "TEST.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tests[0].SourceLine != 1+4 {
-		t.Errorf("expected source_line 5, got %d", tests[0].SourceLine)
-	}
-}
-
 func TestErrors_MissingYamlBlock(t *testing.T) {
 	text := "# T\n\nNo yaml here.\n"
-	_, _, err := Parse(text, "TEST.md")
+	_, err := Parse(text, "TEST.md")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -176,7 +160,7 @@ func TestErrors_MissingYamlBlock(t *testing.T) {
 
 func TestErrors_MissingWatch(t *testing.T) {
 	text := "# T\n\n```yaml\nid: foo\n```\n"
-	_, _, err := Parse(text, "TEST.md")
+	_, err := Parse(text, "TEST.md")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -187,7 +171,7 @@ func TestErrors_MissingWatch(t *testing.T) {
 
 func TestErrors_EachAndCombinations(t *testing.T) {
 	text := "# T\n\n```yaml\neach:\n  x: [a]\ncombinations:\n  - x: [b]\nwatch: x\n```\n"
-	_, _, err := Parse(text, "TEST.md")
+	_, err := Parse(text, "TEST.md")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -198,7 +182,7 @@ func TestErrors_EachAndCombinations(t *testing.T) {
 
 func TestDescriptionContent_YamlBlockExcluded(t *testing.T) {
 	text := "# T\n\nBefore yaml.\n\n```yaml\nwatch: x\n```\n\nAfter yaml.\n"
-	_, tests, err := Parse(text, "TEST.md")
+	tests, err := Parse(text, "TEST.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,5 +195,35 @@ func TestDescriptionContent_YamlBlockExcluded(t *testing.T) {
 	}
 	if strings.Contains(desc, "watch") {
 		t.Errorf("description should not contain 'watch', got %q", desc)
+	}
+}
+
+func TestParseConfig_Defaults(t *testing.T) {
+	cfg, err := ParseConfig(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Ignorefile != ".gitignore" {
+		t.Errorf("expected default ignorefile '.gitignore', got %q", cfg.Ignorefile)
+	}
+}
+
+func TestParseConfig_CustomIgnorefile(t *testing.T) {
+	cfg, err := ParseConfig([]byte("ignorefile: .myignore\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Ignorefile != ".myignore" {
+		t.Errorf("expected ignorefile '.myignore', got %q", cfg.Ignorefile)
+	}
+}
+
+func TestParseConfig_EmptyFile(t *testing.T) {
+	cfg, err := ParseConfig([]byte(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Ignorefile != ".gitignore" {
+		t.Errorf("expected default ignorefile '.gitignore', got %q", cfg.Ignorefile)
 	}
 }

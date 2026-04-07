@@ -11,28 +11,38 @@ This is especially valuable when code is written by AI agents, which have no way
 3. The author verifies each flagged area and runs `testmd resolve <id>` or `testmd fail <id> <message>`
 4. CI calls `testmd ci` and fails if there are unresolved tests
 
-## TEST.md format
+## Project configuration
 
-A TEST.md file has two optional sections, in order:
-
-1. **Frontmatter** — YAML between `---` delimiters at the very beginning
-2. **Test definitions** — sections starting with `# Title`
-
-State is stored separately in `TEST.md.lock` (see [State file](#state-file)).
-
-### Frontmatter
+testmd is configured via a `.testmd.yaml` (or `.testmd.yml`) file at the project root. This file is **required** — its presence defines the project root.
 
 ```yaml
----
-include: [path/to/other/TEST.md]
 ignorefile: .gitignore
----
 ```
 
 | Field        | Type   | Default      | Description                                                  |
 |--------------|--------|--------------|--------------------------------------------------------------|
-| `include`    | list   | `[]`         | Paths to other TEST.md files (relative to current file). Tests from included files are merged. Each file stores its own state. Nested includes are not supported. |
-| `ignorefile` | string | `.gitignore` | Path to a gitignore-format file (relative to root). Matching entries are excluded from label discovery and file hashing. |
+| `ignorefile` | string | `.gitignore` | Path to a gitignore-format file (relative to root). Matching entries are excluded from TEST.md discovery, label discovery, and file hashing. |
+
+An empty `.testmd.yaml` file is valid — all fields use their defaults.
+
+### Root discovery
+
+Commands search upward from the current working directory for `.testmd.yaml` or `.testmd.yml`. The directory containing the config file is the project root. If neither is found, testmd exits with an error.
+
+### TEST.md discovery
+
+All files named `TEST.md` under the project root are automatically discovered:
+
+1. Walk the directory tree from root
+2. Skip directories excluded by the ignorefile (e.g. `node_modules`, `.git`)
+3. Collect all files named exactly `TEST.md`
+4. Sort by relative path for determinism
+
+## TEST.md format
+
+A TEST.md file contains **test definitions** — sections starting with `# Title`. No frontmatter.
+
+State is stored separately in `.testmd.lock` (see [State file](#state-file)).
 
 ### Test definition
 
@@ -70,35 +80,40 @@ Verify that OAuth works for each provider:
 
 ### State file
 
-State is stored in a separate lock file alongside TEST.md. For `TEST.md`, state is in `TEST.md.lock`. The lock file contains plain JSON (no markdown wrapping):
+State is stored in a single `.testmd.lock` file in the project root (next to `.testmd.yaml`). The lock file uses YAML format with deterministic formatting for merge-friendly git diffs:
 
-```json
-{
-  "version": 1,
-  "tests": {
-    "abc123-def456": {
-      "title": "OAuth login flow",
-      "labels": {"provider": "google", "env": "prod"},
-      "content_hash": "...",
-      "files": {
-        "services/google/main.go": "..."
-      },
-      "status": "resolved",
-      "resolved_at": "2026-04-06T12:00:00Z",
-      "failed_at": null,
-      "message": null
-    }
-  }
-}
+```yaml
+version: 1
+tests:
+  abc123def456789abc:
+    title: OAuth login flow
+    source: services/auth/TEST.md
+    status: resolved
+    content_hash: "a1b2c3..."
+    resolved_at: "2026-04-06T12:00:00Z"
+    failed_at: null
+    message: null
+    labels:
+      env: prod
+      provider: google
+    files:
+      services/auth/main.go: "d4e5f6..."
 ```
 
-The JSON is formatted with 2-space indent for readable diffs.
+Formatting rules (for git merge friendliness):
+- Test entries sorted by ID (lexicographic)
+- Scalar fields before nested fields (labels, files)
+- Labels sorted by key
+- Files sorted by path
+- Block style only (no flow `{}` or `[]`)
 
 Implementations MUST:
-- Read state from `<testmd-path>.lock`
-- Write state to `<testmd-path>.lock`
+- Read state from `.testmd.lock` in the project root
+- Write state to `.testmd.lock` in the project root
 - Delete the lock file when state is empty
-- Never modify TEST.md when saving state
+- Never modify TEST.md or `.testmd.yaml` when saving state
+- Use atomic writes (write to temp file, then rename)
+- Use file locking (flock) for concurrent access
 
 ---
 
@@ -182,25 +197,34 @@ combinations:
 
 ## Test identification
 
-### ID format: `aabbcc-ddeeff`
+### ID format: `aabbccddeeffgghhii` (18 hex characters)
 
 ```
 aabbcc   — first 6 hex chars of sha256(title), or sha256(explicit_id) if set
 ddeeff   — first 6 hex chars of sha256(label_string)
+gghhii   — first 6 hex chars of sha256(relative_path_to_test_md)
 ```
 
 The label string is a sorted, comma-separated list of `key=value` pairs. For tests without labels, it is an empty string (hash: `e3b0c4`).
 
+The relative path is the path from the project root to the TEST.md file (e.g. `services/auth/TEST.md`).
+
 The explicit `id` field provides a stable input to the hash, so renaming the title doesn't change the id.
+
+The three segments are concatenated without separators, forming a single 18-character hex string.
 
 ### ID abbreviations
 
-Users can refer to tests by:
-- Full id: `aabbcc-ddeeff` — exact match
-- First part: `aabbcc` — matches all instances of that test
-- Prefix: `aab` — matches if unambiguous
+Users can refer to tests by prefix. Longer prefixes are more specific:
 
-Resolution order: exact → first-part → prefix.
+| Length | What it matches |
+|--------|----------------|
+| 18 chars | Exact match: specific test + labels + source file |
+| 12 chars | Specific test + labels across all files |
+| 6 chars | All instances of a test (all label combinations, all files) |
+| < 6 chars | Prefix match (if unambiguous) |
+
+Resolution: pure prefix match. Exact match is the special case of a full-length prefix.
 
 ---
 
@@ -209,7 +233,7 @@ Resolution order: exact → first-part → prefix.
 For each test instance:
 
 1. Expand `watch` patterns into a file list (with `{var}` substitution)
-2. Exclude the source lock file (`TEST.md.lock`) — it changes on every resolve
+2. Exclude `.testmd.lock` — it changes on every resolve
 3. Sort files alphabetically
 4. For each file: `sha256(relative_path + "\0" + file_content)`
 5. Content hash: `sha256(concat(all_file_hashes))`
@@ -245,10 +269,11 @@ outdated ── fail ─────────────────► fail
 
 ## Ignorefile
 
-The `ignorefile` frontmatter field (default: `.gitignore`) specifies a gitignore-format file. Matching entries are excluded from:
+The `ignorefile` config field (default: `.gitignore`) specifies a gitignore-format file. Matching entries are excluded from:
 
-1. **Variable discovery** — ignored directories are not enumerated as variable values
-2. **File matching** — ignored files are not included in hash computation
+1. **TEST.md discovery** — ignored directories are not searched for TEST.md files
+2. **Variable discovery** — ignored directories are not enumerated as variable values
+3. **File matching** — ignored files are not included in hash computation
 
 This prevents `__pycache__`, `node_modules`, build artifacts, etc. from affecting tests.
 
@@ -260,25 +285,18 @@ For directory entries, the path is checked with a trailing `/` to match gitignor
 
 ### Location
 
-State is stored in a lock file alongside each TEST.md, as described in the [State file](#state-file) section. `TEST.md` → `TEST.md.lock`.
-
-### Per-file state with includes
-
-When using `include`, each TEST.md file has its own lock file storing state for its own tests only. The root file does not aggregate state from included files. When saving:
-
-1. Group test instances by their source file
-2. Write each file's lock file with only its tests
-3. If a file has no tests with state, delete the lock file
+State is stored in a single `.testmd.lock` file in the project root, as described in the [State file](#state-file) section.
 
 ### State record fields
 
 | Field          | Type              | Description                              |
 |----------------|-------------------|------------------------------------------|
 | `title`        | string            | Test title (from `# Title`)              |
+| `source`       | string            | Relative path to the TEST.md file        |
 | `labels`       | object            | Label key-value pairs                     |
 | `content_hash` | string            | Hash of all watched files at resolve time |
 | `files`        | object            | `{relative_path: sha256_hash}` for each file |
-| `status`       | string            | `pending`, `resolved`, `failed`, `outdated` |
+| `status`       | string            | `resolved` or `failed` (`pending` and `outdated` are computed, not stored) |
 | `resolved_at`  | string or null    | ISO 8601 timestamp                        |
 | `failed_at`    | string or null    | ISO 8601 timestamp                        |
 | `message`      | string or null    | Failure message                           |
