@@ -1,4 +1,4 @@
-FROM scratch
+FROM alpine:3.21
 ARG BINARY=testmd
 COPY --chmod=755 ${BINARY} /testmd
 ENTRYPOINT ["/testmd"]
